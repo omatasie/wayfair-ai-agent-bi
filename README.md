@@ -170,4 +170,4 @@ All reports are self-contained HTML — open any of them directly in a browser. 
 
 ## Contact
 
-Oma Tasie-Amadi — [LinkedIn](https://www.linkedin.com/in/YOUR-HANDLE)
+Oma Tasie-Amadi — [LinkedIn](https://www.linkedin.com/in/oma-ta)
