@@ -70,11 +70,11 @@ A seven-stage pipeline that turns a rug category into a decision-ready HTML tren
 
 ### Stages 3–4: AI processing and image generation
 
-![Stages 3 and 4](screenshots/p2_stages3%264_ai-processing_image-generation.png)
+![Stages 3 and 4](screenshots/p2_stage3%264_ai-processing_image-generation.png)
 
 ### Stages 5–7: section generation and output validation
 
-![Stages 5 through 7](screenshots/p2_stages5-7_output.png)
+![Stages 5 through 7](screenshots/p2_stage5-7_output.png)
 
 ### Engineering decisions worth calling out
 
