@@ -3,7 +3,7 @@
 **Program:** Extern — Wayfair AI Agent Engineering for Business Intelligence Externship
 **Duration:** June 29 – August 24, 2026
 **Category analyzed:** Shag Rugs
-**Status:** Complete — all 5 projects delivered
+**Status:** Complete — all 5 projects delivered. Recognized as a **Top Performer** (top 10% of participants).
 
 ---
 
@@ -29,9 +29,10 @@ Each project feeds the next:
 |---|---|
 | Orchestration | n8n |
 | Prompt engineering / chat model | Google Gemini |
+| Image analysis | Gemini Vision — colors, patterns, textures from social imagery |
 | Classification & attribute extraction | OpenRouter |
 | Report generation | Mistral (`mistral-large-latest`) |
-| Image generation | Hugging Face |
+| Image generation | Hugging Face (FLUX.1-schnell) |
 | Product & social data | Extern API (Apify-backed), Architectural Digest & Dezeen RSS |
 | Output | Self-contained HTML reports and dashboard |
 
@@ -57,11 +58,23 @@ A seven-stage pipeline that turns a rug category into a decision-ready HTML tren
 |---|---|
 | 1 | Input validation and routing — detects category, captures optional focus keyword, exits early on invalid input |
 | 2A | Fetches Amazon product data (names, prices, ratings, images) via the Extern API |
-| 2B | Fetches Instagram, Pinterest, blog, and market-forecast signals in parallel |
+| 2B | Fetches Instagram, Pinterest, blog, and market-forecast signals in parallel; Gemini Vision analyzes the imagery |
 | 3 | Classifies products, extracts attributes, identifies micro-segments |
 | 4 | Generates moodboard visuals per segment |
 | 5–6 | Writes each report section under separate analyst personas |
 | 7 | Assembles and validates the final HTML |
+
+### Stages 1–2: input routing and data collection
+
+![Stages 1 and 2](screenshots/p2_stage1%262_input-routing_data-collection.png)
+
+### Stages 3–4: AI processing and image generation
+
+![Stages 3 and 4](screenshots/p2_stages3%264_ai-processing_image-generation.png)
+
+### Stages 5–7: section generation and output validation
+
+![Stages 5 through 7](screenshots/p2_stages5-7_output.png)
 
 ### Engineering decisions worth calling out
 
@@ -70,6 +83,8 @@ A seven-stage pipeline that turns a rug category into a decision-ready HTML tren
 **Two-tier relevance filter.** Exact string matching failed on sub-categories: searching `"shag rug"` missed articles about `"rugs"`. Implemented root-word extraction in the merge node — `"shag rug"` reduces to `"rug"` — then required a second condition, that the item also contain a design-context word (`decor`, `interior`, `style`, `living room`, `trend`). An item is retained only if it satisfies both. This cut irrelevant articles without losing coverage.
 
 **Token budget.** Expanded RSS excerpt truncation from 400 to 600 characters. Enough depth on materials, colors, and patterns for the downstream LLM, while staying inside a sensible token cost.
+
+**Cost architecture.** Stages 1 and 2 are plain JavaScript and HTTP calls with no LLM tokens spent; AI enters only at Stage 3. That kept cost and latency down and made failures far easier to isolate — a broken fetch looks nothing like a broken prompt.
 
 **Reliability over live data where live data can't be trusted.** Instagram and Pinterest actively block scraping and their terms prohibit it. Kept mock routes for those two so the workflow executes reliably every run, and made live RSS the real driver of current signal.
 
@@ -87,17 +102,19 @@ A seven-stage pipeline that turns a rug category into a decision-ready HTML tren
 
 Six stages benchmarking Wayfair against Amazon and Walmart on price, rating, assortment, and positioning.
 
+![Competitor Monitoring Agent](screenshots/p3_full_workflow.png)
+
 Wayfair baseline → Amazon products → Walmart products → merge → LLM analysis → HTML report assembly.
 
 **Sample:** 30 products, 10 per retailer.
 
 | Retailer | Products | Price range | Avg rating |
 |---|---|---|---|
-| Wayfair | 10 | avg $148.31 | 4.5 |
-| Amazon | 11 | $20.99 – $350.22 | 4.5 |
-| Walmart | 12 | $23.39 – $251.00 | 4.4 |
+| Wayfair | 10 | avg $148.31 | 4.43 |
+| Amazon | 10 | $20.99 – $350.22 | 4.51 |
+| Walmart | 10 | $23.39 – $251.00 | 4.51 |
 
-Wayfair sits at a real premium — roughly 2× Amazon and Walmart's typical price — on essentially equal ratings. Walmart's six sub-$50 SKUs and high review volume (9,300 on one listing) pressure the mid-market; Wayfair's defensible ground is designer exclusives (Loloi, Angela Rose × Loloi, Leanne Ford), not price.
+Wayfair sits at a real premium — roughly 2× Amazon and Walmart's typical price — while rating slightly *below* both. Walmart's six sub-$50 SKUs and high review volume (9,300 on one listing) pressure the mid-market; Wayfair's defensible ground is designer exclusives (Loloi, Angela Rose × Loloi, Leanne Ford), not price.
 
 ---
 
@@ -111,7 +128,7 @@ This project supplied a working agent and asked for an enhancement. Evaluating t
 
 The enhancement addressed both:
 
-- **Brand voice injection** — a Senior Wayfair Content Strategist persona, an explicit banned-phrase list of AI-isms, and tone rules drawn from Wayfair's actual editorial voice (warm, short sentences, reassuring)
+- **Brand voice injection** — a Senior Wayfair Content Strategist persona operating as a "knowledgeable design friend," an explicit banned-phrase list (*elevate your space*, *transform your home*, *curated selection*, *seamlessly blends*, *timeless elegance*), and a rule against putting raw trend percentages into customer-facing copy
 - **Publish-ready expansion** — a full three-part email drip with body copy and CTAs, a TikTok/Reel script with hook, visual cues, and voiceover, and SEO product descriptions in short and long form
 
 ---
@@ -120,9 +137,13 @@ The enhancement addressed both:
 
 Takes the Project 2 and Project 3 HTML reports as uploads and returns a single unified dashboard.
 
+![Dashboard Builder workflow](screenshots/p5_dashboard_builder.png)
+
 Upload Form → Fetch Template → Extract Form Files → Parse P2 & P3 Reports → Build Dashboard HTML → Prepare Download
 
-Parsing is plain JavaScript pattern matching against the two reports — no external library — filling `{{PLACEHOLDER}}` slots in a fetched template and building the repeating card and row elements.
+Parsing is plain JavaScript pattern matching against the two reports — no Cheerio, no external library. A small helper set (`elementsByClass`, `firstTagText`, `attr`, `elementAt`) does the work a DOM parser would, then fills `{{PLACEHOLDER}}` slots in a fetched template and builds the repeating card and row elements.
+
+![Dashboard executive overview](screenshots/dashboard_output.png)
 
 The output has six tabs: Executive Overview, Market & Trends, Competitive Intel, Opportunity Radar, Risk & Diagnostics, and Action Center. A build that normally takes a category team two to four hours, every week, runs in about five minutes.
 
@@ -137,7 +158,7 @@ The Project 3 competitor report shipped with an AI-generated executive summary t
 Both claims were false, and the evidence was in the same document.
 
 - **On price:** the very next paragraph stated Wayfair averages $148 against Amazon's $65 and Walmart's $60. Underpriced and "30–50% higher" cannot both be true, and they appeared two sentences apart.
-- **On ratings:** the summary said Wayfair "surpasses Amazon (4.5)" while quoting Wayfair at 4.5. Equal, not superior.
+- **On ratings:** the summary claimed Wayfair "surpasses Amazon," while the comparison table two sections down scored Wayfair at 4.43 against 4.51 for both competitors. Lower, not higher.
 
 The data collection was correct. The analysis was correct. The failure was in the narrative layer written on top of them — and it was fluent and confident enough to pass a quick read, which is exactly what makes it dangerous. A category manager acting on that summary would have concluded there was room to raise prices.
 
@@ -160,6 +181,12 @@ Every generated summary in this repository has since been checked line by line a
 │   ├── p4_insights_content.json
 │   └── p5_dashboard_builder.json
 ├── screenshots/
+│   ├── dashboard_output.png
+│   ├── p2_stage1&2_input-routing_data-collection.png
+│   ├── p2_stages3&4_ai-processing_image-generation.png
+│   ├── p2_stages5-7_output.png
+│   ├── p3_full_workflow.png
+│   └── p5_dashboard_builder.png
 └── docs/
     └── final_presentation.pdf
 ```
